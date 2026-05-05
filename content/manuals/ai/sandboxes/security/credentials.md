@@ -22,33 +22,35 @@ definition) declares the first two. You provide the value on the host.
 
 There are two host-side stores, plus a host shell fallback:
 
-- **Stored secrets, by service identifier.** Built-in agents declare service
-  identifiers (`anthropic`, `openai`, `github`, etc.) in their kit specs;
-  custom kits can declare their own. `sbx secret set` stores a value keyed on
-  that identifier. When a sandboxed request matches a service's domain, the
-  proxy reads the stored value and writes the configured header. Inside the
-  sandbox, the env var holds a sentinel like `proxy-managed`, so SDKs that
-  read the variable see something non-empty without seeing the real secret.
-  See [Stored secrets](#stored-secrets).
+- Stored secrets, keyed on a service identifier: built-in agents declare
+  service identifiers (`anthropic`, `openai`, `github`, etc.) in their kit
+  specs; custom kits can declare their own. `sbx secret set` stores a value
+  keyed on that identifier. When a sandboxed request matches a service's
+  domain, the proxy reads the stored value and writes the configured header.
+  Inside the sandbox, the environment variable holds a sentinel like
+  `proxy-managed`, so SDKs that read the variable see something non-empty
+  without seeing the real secret. See [Stored secrets](#stored-secrets).
 
-- **Stored secrets, by target domain and env var name.** `sbx secret set-custom`
-  stores a value alongside a target domain, an env var name, and an optional
-  placeholder. The sandbox sees the placeholder; the proxy substitutes it
-  with the real value anywhere it appears in outbound traffic to that
-  domain. Use this when the service-identifier model doesn't fit — for
-  example, when the agent validates the env var format at boot, or when the
-  credential lands in a request body. See [Custom secrets](#custom-secrets).
+- Stored secrets, keyed on a target domain and environment variable name:
+  `sbx secret set-custom` stores a value alongside a target domain, an
+  environment variable name, and an optional placeholder. The sandbox sees
+  the placeholder; the proxy substitutes it with the real value anywhere it
+  appears in outbound traffic to that domain. Use this when the
+  service-identifier model doesn't fit — for example, when the agent
+  validates the variable format at boot, or when the credential lands in a
+  request body. See [Custom secrets](#custom-secrets).
 
-- **Host shell environment variables.** As a fallback, the proxy reads from
-  your shell environment. Useful for one-off testing or development; stored
+- Host shell environment variables: as a fallback, the proxy reads from your
+  shell environment. Useful for one-off testing or development; stored
   secrets are preferred because shell environment variables are plaintext
   and visible to other processes running as your user. See
   [Environment variables](#environment-variables).
 
-If both a stored secret and a host env var are set for the same service, the
-stored secret takes precedence. For multi-provider agents (OpenCode, Docker
-Agent), the proxy selects credentials based on the API endpoint being called.
-See individual [agent pages](../agents/) for provider-specific details.
+If both a stored secret and a host environment variable are set for the same
+service, the stored secret takes precedence. For multi-provider agents
+(OpenCode, Docker Agent), the proxy selects credentials based on the API
+endpoint being called. See individual [agent pages](../agents/) for
+provider-specific details.
 
 ## Stored secrets
 
@@ -168,15 +170,16 @@ network policy. For details, see
 ## Custom secrets
 
 > [!IMPORTANT]
-> Custom secrets are experimental. The `set-custom` subcommand is hidden
+> Custom secrets are experimental. The `set-custom` command is hidden
 > from `sbx --help`, and behavior, flags, and the placeholder format may
 > change.
 
 For credentials that don't fit the service-identifier model — for example,
-when an agent validates the env var format at boot, or when the credential
-lands in a request body rather than a header — use `sbx secret set-custom`.
-The secret is keyed on a target domain, an env var name, and an optional
-placeholder string, instead of a service identifier.
+when an agent validates the environment variable format at boot, or when the
+credential lands in a request body rather than a header — use
+`sbx secret set-custom`. The secret is keyed on a target domain, an
+environment variable name, and an optional placeholder string, instead of a
+service identifier.
 
 ```console
 $ sbx secret set-custom -g \
@@ -184,6 +187,13 @@ $ sbx secret set-custom -g \
     --env API_KEY \
     --value <secret>
 ```
+
+> [!WARNING]
+> Passing the secret as `--value <secret>` records it in your shell history
+> and exposes it to other processes running as your user. Avoid pasting
+> real credentials inline — read the value from a variable that's already
+> in your environment, and clear shell history if a real secret was passed
+> on the command line.
 
 Inside the sandbox, `API_KEY` is set to a generated placeholder (for example,
 `sbx-cs-<rand>`). When a sandboxed process sends a request to
