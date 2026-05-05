@@ -128,6 +128,41 @@ commit signing to work. Outbound SSH connections are still subject to sandbox
 network policy. For details, see
 [Signed commits](../usage.md#signed-commits).
 
+## Custom secrets
+
+> [!IMPORTANT]
+> Custom secrets are experimental. The `set-custom` subcommand is
+> hidden from `sbx --help`, and behavior, flags, and the placeholder
+> format may change.
+
+For services that aren't in the [supported services](#supported-services)
+table and don't fit the service-identifier model used by
+[kits](../customize/kits.md#authenticate-to-external-services),
+`sbx secret set-custom` stores a secret keyed on a target host and
+environment variable name. The sandbox sees the env var set to a
+generated placeholder; the proxy substitutes the real secret into
+outbound traffic to the target host before forwarding.
+
+```console
+$ sbx secret set-custom -g \
+    --host api.example.com \
+    --env API_KEY \
+    --value <secret>
+```
+
+Inside the sandbox, `API_KEY` contains a placeholder string (for
+example, `sbx-cs-<rand>`). When a sandboxed process sends a request
+to `api.example.com` and the placeholder appears anywhere in the
+request, the proxy replaces it with the real value. The agent never
+sees the real secret.
+
+Use `set-custom` only when the service-based flow doesn't fit — for
+example, when the credential lands in a request body rather than a
+header, when the value is mixed with other text in a header, or
+when you don't want to author a kit. Prefer the
+[stored secret](#stored-secrets) flow whenever it's an option; it's
+simpler and the credential shape is constrained.
+
 ## Environment variables
 
 As an alternative to stored secrets, export the relevant environment variable

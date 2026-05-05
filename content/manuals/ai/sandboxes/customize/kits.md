@@ -112,35 +112,71 @@ environment:
 
 ### Control network access
 
-Network rules define which domains the sandbox can reach. For
-authenticated services, a domain can be mapped to a service identifier,
-and the proxy injects the auth header on forwarded requests:
+Network rules define which domains the sandbox can reach:
+
+```yaml
+network:
+  allowedDomains:
+    - api.example.com
+    - "*.cdn.example.com"
+```
+
+For authenticated services, see
+[Authenticate to external services](#authenticate-to-external-services).
+
+### Authenticate to external services
+
+A kit can attach credentials to outbound requests without exposing the
+secret to the agent. The host-side proxy reads the credential and
+injects it as a header when a request leaves the sandbox; the agent
+inside the VM never sees the value.
+
+The wiring has three blocks, tied together by a service identifier
+that you choose (here, `my-service`):
 
 ```yaml
 network:
   allowedDomains:
     - api.example.com
   serviceDomains:
-    api.example.com: my-service
+    api.example.com: my-service # Tag traffic to this domain
   serviceAuth:
     my-service:
-      headerName: Authorization
-      valueFormat: "Bearer %s"
-```
+      headerName: Authorization # Attach the credential as this header
+      valueFormat: "Bearer %s" # ...formatted like this
 
-### Declare credential sources
-
-Credential sources tell the proxy where to find secrets on the host. The
-sandbox never sees the value itself. The proxy reads it and injects it
-into outbound requests:
-
-```yaml
 credentials:
   sources:
     my-service:
       env:
-        - MY_SERVICE_API_KEY
+        - MY_SERVICE_API_KEY # Where to read the credential on the host
 ```
+
+When the sandbox sends a request to `api.example.com`, the proxy tags
+it `my-service`, looks up the credential, and sets
+`Authorization: Bearer <value>` on the request before forwarding.
+
+The credential value is resolved on the host, in this order:
+
+1. A stored secret keyed on the service identifier
+   (`sbx secret set -g my-service`).
+2. Any host environment variable listed under
+   `credentials.sources.<service>.env`.
+
+Storing the value in your OS keychain avoids exporting it in every
+shell:
+
+```console
+$ sbx secret set -g my-service
+```
+
+The keychain entry is keyed on the same service identifier the kit
+declares — there's no separate service registration step.
+
+For credentials that don't fit this shape — for example, a value used
+in a request body, or a header that mixes the secret with other text —
+see [Custom secrets](../security/credentials.md#custom-secrets) for an
+experimental placeholder-substitution alternative.
 
 ### Define an agent
 
