@@ -209,11 +209,15 @@ select = ["E", "F", "I"]
 > The templates for the built-in agents (`claude`, `codex`, etc) already
 > includes `uv`, so this mixin can use it without installing it separately.
 
-To run an agent with this mixin:
+To start a new sandbox with this mixin:
 
 ```console
 $ sbx run claude --kit /path/to/ruff-lint/
 ```
+
+To apply the mixin to a sandbox that's already running, use
+[`sbx kit add`](#local) instead. The `--kit` flag only takes effect when a
+sandbox is created.
 
 ## Agent kits
 
