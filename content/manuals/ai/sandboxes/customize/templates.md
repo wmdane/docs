@@ -117,6 +117,27 @@ $ docker build -t my-org/my-template:v1 --push .
 > registry directly; it doesn't share the image store of your local Docker
 > daemon on the host.
 
+> [!IMPORTANT]
+> Private templates are only supported on Docker Hub. `sbx` reuses your
+> `sbx login` session to pull private images from Docker Hub. Other
+> registries (such as GitHub Container Registry, ECR, or a self-hosted
+> registry like Nexus) are pulled anonymously, so private images on those
+> registries fail to pull.
+
+For locally-built images or private images on registries that `sbx`
+can't authenticate against, save the image to a tar and load it
+directly into the sandbox runtime instead of pulling from a registry:
+
+```console
+$ docker image save my-org/my-template:v1 -o my-template.tar
+$ sbx template load my-template.tar
+$ sbx run --template my-org/my-template:v1 claude
+```
+
+`sbx template load` imports the tar into the sandbox runtime's image
+store, so the image doesn't need to be reachable from a registry at
+sandbox creation time.
+
 Unless you use the permissive `allow-all` network policy, you may also need
 to allow-list any domains that your custom tools depend on:
 

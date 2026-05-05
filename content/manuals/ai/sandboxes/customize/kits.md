@@ -332,6 +332,12 @@ $ sbx run claude --kit ghcr.io/myorg/my-kit:1.0
 For Docker Hub, include the full `docker.io` prefix. See
 [Packaging and distribution](#packaging-and-distribution) for publishing.
 
+> [!IMPORTANT]
+> Private kits are only supported on Docker Hub. `sbx` reuses your
+> `sbx login` session to pull private artifacts from Docker Hub. Other
+> registries are pulled anonymously, so private kits hosted on
+> registries other than Docker Hub fail to pull.
+
 ## Packaging and distribution
 
 The `sbx kit` subcommands validate, inspect, and publish kits:
