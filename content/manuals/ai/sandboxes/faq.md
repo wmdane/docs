@@ -44,7 +44,7 @@ $ export SBX_NO_TELEMETRY=1
 ## How do I set custom environment variables inside a sandbox?
 
 The [`sbx secret`](/reference/cli/sbx/secret/) command only supports a fixed set
-of [services](security/credentials.md#supported-services) (Anthropic, OpenAI,
+of [services](security/credentials.md#built-in-services) (Anthropic, OpenAI,
 GitHub, and others). If your agent needs an environment variable that isn't
 tied to a supported service, such as `BRAVE_API_KEY` or a custom internal
 token, write it to `/etc/sandbox-persistent.sh` inside the sandbox. This
@@ -97,6 +97,24 @@ If you prefer to re-enable approval prompts, change the permission mode
 inside the session. Most agents let you switch permission modes after
 startup. In Claude Code, use the `/permissions` command to change the mode
 interactively.
+
+To make approval prompts the default for every session, define a custom
+agent kit that overrides the agent's entrypoint to drop the
+permission-skipping flag. For example, a kit that launches Claude Code
+without `--dangerously-skip-permissions`:
+
+```yaml {title="claude-safe/spec.yaml"}
+schemaVersion: "1"
+kind: agent
+name: claude-safe
+agent:
+  image: "docker/sandbox-templates:claude-code-docker"
+  entrypoint:
+    run: [claude]
+```
+
+Run it with `sbx run claude-safe --kit ./claude-safe/`. See
+[Agent kits](customize/kits.md#agent-kits) for the full pattern.
 
 ## How do I know if my agent is running in a sandbox?
 

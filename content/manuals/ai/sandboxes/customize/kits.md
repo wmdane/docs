@@ -98,49 +98,73 @@ See [`initFiles`](#initfiles) in the spec reference for all fields.
 ### Set environment variables
 
 Environment variables set by the kit are available to the agent at
-runtime. Sensitive values can be marked proxy-managed, so the real
-credential is substituted only when the proxy forwards a request. The
-secret itself never enters the VM:
+runtime:
 
 ```yaml
 environment:
   variables:
     MY_TOOL_WORKSPACE: /home/agent/my-tool
-  proxyManaged:
-    - MY_TOOL_API_KEY
 ```
+
+For credentials, see
+[Authenticate to external services](#authenticate-to-external-services).
+Don't put secret values directly in `environment.variables` — they'd
+be visible inside the sandbox VM.
 
 ### Control network access
 
-Network rules define which domains the sandbox can reach. For
-authenticated services, a domain can be mapped to a service identifier,
-and the proxy injects the auth header on forwarded requests:
+Network rules define which domains the sandbox can reach:
+
+```yaml
+network:
+  allowedDomains:
+    - api.example.com
+    - "*.cdn.example.com"
+```
+
+For authenticated services, see
+[Authenticate to external services](#authenticate-to-external-services).
+
+### Authenticate to external services
+
+A kit can attach credentials to outbound requests through the
+host-side proxy. The agent inside the VM works with a sentinel value;
+the proxy reads the real credential on the host and overwrites the
+auth header before the request leaves the sandbox.
+
+The standard pattern uses four blocks tied to a service identifier
+you choose (here, `my-service`):
 
 ```yaml
 network:
   allowedDomains:
     - api.example.com
   serviceDomains:
-    api.example.com: my-service
+    api.example.com: my-service # Tag traffic to this domain
   serviceAuth:
     my-service:
-      headerName: Authorization
+      headerName: Authorization # Overwrite this header
       valueFormat: "Bearer %s"
-```
 
-### Declare credential sources
-
-Credential sources tell the proxy where to find secrets on the host. The
-sandbox never sees the value itself. The proxy reads it and injects it
-into outbound requests:
-
-```yaml
 credentials:
   sources:
     my-service:
       env:
-        - MY_SERVICE_API_KEY
+        - MY_SERVICE_API_KEY # Host-side credential lookup
+
+environment:
+  proxyManaged:
+    - MY_SERVICE_API_KEY # Set the in-VM env var to "proxy-managed"
 ```
+
+The agent boots with `MY_SERVICE_API_KEY=proxy-managed`, sends a
+request with that value in `Authorization`, and the proxy overwrites
+the header with the real credential before forwarding. The real
+secret never enters the VM.
+
+See [Credentials](../security/credentials.md) for how to provide the
+credential value on your host, other approaches for cases the example
+above doesn't fit, and what the proxy does at request time.
 
 ### Define an agent
 
@@ -209,11 +233,15 @@ select = ["E", "F", "I"]
 > The templates for the built-in agents (`claude`, `codex`, etc) already
 > includes `uv`, so this mixin can use it without installing it separately.
 
-To run an agent with this mixin:
+To start a new sandbox with this mixin:
 
 ```console
 $ sbx run claude --kit /path/to/ruff-lint/
 ```
+
+To apply the mixin to a sandbox that's already running, use
+[`sbx kit add`](#local) instead. The `--kit` flag only takes effect when a
+sandbox is created.
 
 ## Agent kits
 
@@ -309,7 +337,7 @@ removed from a running sandbox — remove and recreate it to start clean.
 ### Git repository
 
 ```console
-$ sbx run claude --kit "git+https://github.com/<owner>/<repo>.git#ref=v0.1.0&dir=code-server"
+$ sbx run claude --kit "git+https://github.com/docker/sbx-kits-contrib.git#ref=v0.1.0&dir=code-server"
 ```
 
 - `#ref=<branch|tag|commit>` pins to a specific revision. Defaults to the
@@ -327,6 +355,12 @@ $ sbx run claude --kit ghcr.io/myorg/my-kit:1.0
 
 For Docker Hub, include the full `docker.io` prefix. See
 [Packaging and distribution](#packaging-and-distribution) for publishing.
+
+> [!IMPORTANT]
+> Private kits are only supported on Docker Hub. `sbx` reuses your
+> `sbx login` session to pull private artifacts from Docker Hub. Other
+> registries are pulled anonymously, so private kits hosted on
+> registries other than Docker Hub fail to pull.
 
 ## Packaging and distribution
 
